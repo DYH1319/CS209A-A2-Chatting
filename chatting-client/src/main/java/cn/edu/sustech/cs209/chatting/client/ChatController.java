@@ -12,69 +12,101 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
+import java.io.*;
+import java.net.Socket;
 import java.net.URL;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class Controller implements Initializable {
-
+public class ChatController implements Initializable {
     @FXML
-    ListView<Message> chatContentList;
+    private Label currentOnlineCnt;
+    @FXML
+    private Label currentUsername;
+    @FXML
+    private ListView<Message> chatContentList;
+    private String name;
+    private Socket socket;
+    private DataInputStream dis;
+    private DataOutputStream dos;
 
-    String username;
-
+    public void setSocketAndStream(String name, Socket socket, DataInputStream dis, DataOutputStream dos) {
+        this.name = name;
+        this.socket = socket;
+        this.dis = dis;
+        this.dos = dos;
+        Platform.runLater(() -> currentUsername.setText("Current User:" + name));
+        new Thread(new ReadFromServer()).start();
+    }
+    
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-
-        Dialog<String> dialog = new TextInputDialog();
-        dialog.setTitle("Login");
-        dialog.setHeaderText(null);
-        dialog.setContentText("Username:");
-
-        Optional<String> input = dialog.showAndWait();
-        if (input.isPresent() && !input.get().isEmpty()) {
-            /*
-               TODO: Check if there is a user with the same name among the currently logged-in users,
-                     if so, ask the user to change the username
-             */
-            username = input.get();
-        } else {
-            System.out.println("Invalid username " + input + ", exiting");
-            Platform.exit();
-        }
-
         chatContentList.setCellFactory(new MessageCellFactory());
     }
-
+    
+    private class ReadFromServer implements Runnable {
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    int flag = dis.readInt();
+                    switch (flag) {
+                        // 0: Update online number
+                        case 0:
+                            updateOnlineCount(dis.readInt());
+                            break;
+                    }
+                } catch (IOException e) {
+                    serverOffline();
+                    return;
+                }
+            }
+        }
+    }
+    
+    public void serverOffline() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Warning");
+            alert.setHeaderText("Server is offline. Program will be exit.");
+            alert.setContentText(null);
+            alert.showAndWait();
+            Platform.exit();
+        });
+    }
+    
+    public void updateOnlineCount(int onlineCount) {
+        Platform.runLater(() -> currentOnlineCnt.setText("Online: " + onlineCount));
+    }
+    
     @FXML
     public void createPrivateChat() {
         AtomicReference<String> user = new AtomicReference<>();
-
+        
         Stage stage = new Stage();
         ComboBox<String> userSel = new ComboBox<>();
-
+        
         // FIXME: get the user list from server, the current user's name should be filtered out
         userSel.getItems().addAll("Item 1", "Item 2", "Item 3");
-
+        
         Button okBtn = new Button("OK");
         okBtn.setOnAction(e -> {
             user.set(userSel.getSelectionModel().getSelectedItem());
             stage.close();
         });
-
+        
         HBox box = new HBox(10);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(20, 20, 20, 20));
         box.getChildren().addAll(userSel, okBtn);
         stage.setScene(new Scene(box));
         stage.showAndWait();
-
+        
         // TODO: if the current user already chatted with the selected user, just open the chat with that user
         // TODO: otherwise, create a new chat item in the left panel, the title should be the selected user's name
     }
-
+    
     /**
      * A new dialog should contain a multi-select list, showing all user's name.
      * You can select several users that will be joined in the group chat, including yourself.
@@ -88,7 +120,7 @@ public class Controller implements Initializable {
     @FXML
     public void createGroupChat() {
     }
-
+    
     /**
      * Sends the message to the <b>currently selected</b> chat.
      * <p>
@@ -99,7 +131,7 @@ public class Controller implements Initializable {
     public void doSendMessage() {
         // TODO
     }
-
+    
     /**
      * You may change the cell factory if you changed the design of {@code Message} model.
      * Hint: you may also define a cell factory for the chats displayed in the left panel, or simply override the toString method.
@@ -108,23 +140,23 @@ public class Controller implements Initializable {
         @Override
         public ListCell<Message> call(ListView<Message> param) {
             return new ListCell<Message>() {
-
+                
                 @Override
                 public void updateItem(Message msg, boolean empty) {
                     super.updateItem(msg, empty);
                     if (empty || Objects.isNull(msg)) {
                         return;
                     }
-
+                    
                     HBox wrapper = new HBox();
                     Label nameLabel = new Label(msg.getSentBy());
                     Label msgLabel = new Label(msg.getData());
-
+                    
                     nameLabel.setPrefSize(50, 20);
                     nameLabel.setWrapText(true);
                     nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
-
-                    if (username.equals(msg.getSentBy())) {
+                    
+                    if (name.equals(msg.getSentBy())) {
                         wrapper.setAlignment(Pos.TOP_RIGHT);
                         wrapper.getChildren().addAll(msgLabel, nameLabel);
                         msgLabel.setPadding(new Insets(0, 20, 0, 0));
@@ -133,7 +165,7 @@ public class Controller implements Initializable {
                         wrapper.getChildren().addAll(nameLabel, msgLabel);
                         msgLabel.setPadding(new Insets(0, 0, 0, 20));
                     }
-
+                    
                     setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
                     setGraphic(wrapper);
                 }
