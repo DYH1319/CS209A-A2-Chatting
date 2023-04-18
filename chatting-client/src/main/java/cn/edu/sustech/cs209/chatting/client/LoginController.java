@@ -11,12 +11,11 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 public class LoginController implements Initializable {
     @FXML
@@ -32,20 +31,24 @@ public class LoginController implements Initializable {
     @FXML
     private Button signInBtn;
     private Socket socket;
-    private DataInputStream dis;
-    private DataOutputStream dos;
+    private ObjectInputStream ois;
+    private ObjectOutputStream oos;
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
             socket = new Socket("127.0.0.1", 8520);
-            dis = new DataInputStream(socket.getInputStream());
-            dos = new DataOutputStream(socket.getOutputStream());
+            oos = new ObjectOutputStream(socket.getOutputStream());
+            oos.writeObject("");
+            ois = new ObjectInputStream(socket.getInputStream());
+            ois.readObject();
             
             signUpBtn.setOnAction(event -> signUp(signUpName.getText(), signUpPwd.getText()));
             signInBtn.setOnAction(event -> signIn(signInName.getText(), signInPwd.getText()));
         } catch (IOException e) {
             serverOffline();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
     
@@ -61,12 +64,12 @@ public class LoginController implements Initializable {
             return;
         }
         try {
-            dos.writeInt(0); // sign up request
-            dos.writeUTF(name);
-            dos.writeUTF(password);
-            dos.flush();
+            oos.writeInt(0); // sign up request
+            oos.writeUTF(name);
+            oos.writeUTF(password);
+            oos.flush();
             
-            boolean flag = dis.readBoolean();
+            boolean flag = ois.readBoolean();
             if (flag) {
                 Platform.runLater(() -> {
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -92,6 +95,7 @@ public class LoginController implements Initializable {
         }
     }
     
+    @SuppressWarnings("unchecked")
     private void signIn(String name, String password) {
         if (name.isEmpty() || password.isEmpty()) {
             Platform.runLater(() -> {
@@ -104,23 +108,23 @@ public class LoginController implements Initializable {
             return;
         }
         try {
-            dos.writeInt(1); // sign in request
-            dos.writeUTF(name);
-            dos.writeUTF(password);
-            dos.flush();
+            oos.writeInt(1); // sign in request
+            oos.writeUTF(name);
+            oos.writeUTF(password);
+            oos.flush();
             
-            int flag = dis.readInt();
+            int flag = ois.readInt();
             if (flag == 2) {
                 try {
                     FXMLLoader loader = new FXMLLoader(getClass().getResource("chat.fxml"));
                     Scene chatScene = new Scene(loader.load());
                     ChatController chatController = loader.getController();
-                    chatController.setSocketAndStream(name, socket, dis, dos);
+                    chatController.setSocketAndStream(name, socket, ois, oos, (Set<String>) ois.readObject());
                     Stage stage = (Stage) signInBtn.getScene().getWindow();
                     stage.hide();
                     stage.setScene(chatScene);
                     stage.show();
-                } catch (IOException e) {
+                } catch (IOException | ClassNotFoundException | ClassCastException e) {
                     e.printStackTrace();
                 }
             } else {

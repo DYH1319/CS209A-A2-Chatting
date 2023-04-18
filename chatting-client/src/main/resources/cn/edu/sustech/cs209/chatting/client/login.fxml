@@ -7,19 +7,23 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 
-<SplitPane dividerPositions="0.5" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cn.edu.sustech.cs209.chatting.client.LoginController">
+<SplitPane dividerPositions="0.5" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
+           prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8.0.171"
+           xmlns:fx="http://javafx.com/fxml/1" fx:controller="cn.edu.sustech.cs209.chatting.client.LoginController">
     <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
-        <Button fx:id="signUpBtn" layoutX="106.0" layoutY="248.0" mnemonicParsing="false" prefHeight="39.0" prefWidth="84.0" text="注册" />
-        <TextField fx:id="signUpName" layoutX="81.0" layoutY="123.0" />
-        <PasswordField fx:id="signUpPwd" layoutX="81.0" layoutY="176.0" />
-        <Label layoutX="35.0" layoutY="126.0" text="用户名：" />
-        <Label layoutX="35.0" layoutY="180.0" text="密码：" />
+        <Button fx:id="signUpBtn" layoutX="106.0" layoutY="248.0" mnemonicParsing="false" prefHeight="39.0"
+                prefWidth="84.0" text="注册"/>
+        <TextField fx:id="signUpName" layoutX="81.0" layoutY="123.0"/>
+        <PasswordField fx:id="signUpPwd" layoutX="81.0" layoutY="176.0"/>
+        <Label layoutX="35.0" layoutY="126.0" text="用户名："/>
+        <Label layoutX="35.0" layoutY="180.0" text="密码："/>
     </AnchorPane>
     <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
-        <Button fx:id="signInBtn" layoutX="106.0" layoutY="251.0" mnemonicParsing="false" prefHeight="39.0" prefWidth="84.0" text="登录" />
-        <TextField fx:id="signInName" layoutX="85.0" layoutY="123.0" />
-        <PasswordField fx:id="signInPwd" layoutX="85.0" layoutY="176.0" />
-        <Label layoutX="39.0" layoutY="126.0" text="用户名：" />
-        <Label layoutX="39.0" layoutY="180.0" text="密码：" />
+        <Button fx:id="signInBtn" layoutX="106.0" layoutY="251.0" mnemonicParsing="false" prefHeight="39.0"
+                prefWidth="84.0" text="登录"/>
+        <TextField fx:id="signInName" layoutX="85.0" layoutY="123.0"/>
+        <PasswordField fx:id="signInPwd" layoutX="85.0" layoutY="176.0"/>
+        <Label layoutX="39.0" layoutY="126.0" text="用户名："/>
+        <Label layoutX="39.0" layoutY="180.0" text="密码："/>
     </AnchorPane>
 </SplitPane>
