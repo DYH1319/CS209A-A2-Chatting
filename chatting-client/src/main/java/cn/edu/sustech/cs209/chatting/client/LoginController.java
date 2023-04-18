@@ -64,12 +64,14 @@ public class LoginController implements Initializable {
             return;
         }
         try {
-            oos.writeInt(0); // sign up request
-            oos.writeUTF(name);
-            oos.writeUTF(password);
-            oos.flush();
-            
-            boolean flag = ois.readBoolean();
+            boolean flag = false;
+            if (!name.equals("Server")) { // Server是系统保留名，不能注册名为Server的用户
+                oos.writeInt(0); // sign up request
+                oos.writeUTF(name);
+                oos.writeUTF(password);
+                oos.flush();
+                flag = ois.readBoolean();
+            }
             if (flag) {
                 Platform.runLater(() -> {
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);

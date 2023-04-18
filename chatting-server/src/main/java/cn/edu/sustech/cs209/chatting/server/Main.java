@@ -6,7 +6,12 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.*;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Date;
 
 public class Main {
     
@@ -37,7 +42,7 @@ public class Main {
     
     public static void main(String[] args) {
         try (ServerSocket ss = new ServerSocket(8520)) {
-            System.out.println("-- Starting server --");
+            System.out.println("-- Starting server -- Current time: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
             while (true) {
                 Socket socket = ss.accept();
                 new Thread(new ReadFromClient(socket)).start();
@@ -69,6 +74,7 @@ public class Main {
                 
                 while (true) {
                     // 0: sign up; 1: sign in; 2: start a new private chat; 3: start a new group chat
+                    // 4: private message; 5: group message
                     int flag = ois.readInt();
                     switch (flag) {
                         // 0: sign up
@@ -144,8 +150,7 @@ public class Main {
                             String groupName = ois.readUTF();
                             String groupMember = ois.readUTF();
                             List<String> user = (List<String>) ois.readObject();
-                            user.remove(name);
-                            user.forEach(u -> {
+                            user.stream().filter(u -> !u.equals(name)).forEach(u -> {
                                 ObjectOutputStream dest = ooss.get(u);
                                 try {
                                     dest.writeInt(2);
@@ -153,15 +158,37 @@ public class Main {
                                     dest.writeUTF(groupName);
                                     dest.writeUTF(groupMember);
                                     dest.writeObject(user);
+                                    dest.flush();
                                 } catch (IOException e) {
-                                    userOffline(name);
+                                    userOffline(u);
                                 }
                             });
                             break;
                         }
-                        // 4: 转发消息
+                        // 4: private message
                         case 4: {
-                            
+                            Message message = (Message) ois.readObject();
+                            ObjectOutputStream dest = ooss.get(message.getSendTo());
+                            try {
+                                dest.writeInt(3);
+                                dest.writeObject(message);
+                            } catch (IOException ex) {
+                                userOffline(message.getSendTo());
+                            }
+                            break;
+                        }
+                        // 5: group message
+                        case 5: {
+                            Message message = (Message) ois.readObject();
+                            message.getSendTos().forEach(e -> {
+                                ObjectOutputStream dest = ooss.get(e);
+                                try {
+                                    dest.writeInt(4);
+                                    dest.writeObject(message);
+                                } catch (IOException ex) {
+                                    userOffline(e);
+                                }
+                            });
                             break;
                         }
                     }

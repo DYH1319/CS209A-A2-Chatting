@@ -81,7 +81,7 @@ public class ChatController implements Initializable {
                             user[0] = ois.readUTF();
                             Platform.runLater(() -> {
                                 ListView<Message> listView = new ListView<>();
-                                listView.getItems().add(new Message(10L, "Server", name, user[0] + "对你发起了私聊"));
+                                listView.getItems().add(new Message("Server", name, user[0] + "对你发起了私聊"));
                                 chatList.getItems().add(new Chat(name, user[0], null, listView, ChatType.PRIVATE));
                             });
                             break;
@@ -95,9 +95,21 @@ public class ChatController implements Initializable {
                             user.remove(name);
                             Platform.runLater(() -> {
                                 ListView<Message> listView = new ListView<>();
-                                listView.getItems().add(new Message(10L, "Server", name, inviteUser + "邀请你加入了群聊，参与群聊的人有：" + groupMember));
+                                listView.getItems().add(new Message("Server", name, inviteUser + "邀请你加入了群聊，参与群聊的人有：" + groupMember));
                                 chatList.getItems().add(new Chat(name, groupName, user, listView, ChatType.GROUP));
                             });
+                            break;
+                        }
+                        // 3: Private message
+                        case 3: {
+                            Message message = (Message) ois.readObject();
+                            Platform.runLater(() -> chatList.getItems().get(chatList.getItems().stream().map(c -> c.youName).collect(Collectors.toList()).indexOf(message.getSentBy())).listView.getItems().add(message));
+                            break;
+                        }
+                        // 4: Group message
+                        case 4: {
+                            Message message = (Message) ois.readObject();
+                            Platform.runLater(() -> chatList.getItems().get(chatList.getItems().stream().map(c -> c.youName).collect(Collectors.toList()).indexOf(message.getSendTo())).listView.getItems().add(message));
                             break;
                         }
                     }
@@ -161,7 +173,7 @@ public class ChatController implements Initializable {
                     oos.writeUTF(user.get());
                     oos.flush();
                     ListView<Message> listView = new ListView<>();
-                    listView.getItems().add(new Message(10L, "Server", name, "你对" + user.get() + "发起了私聊"));
+                    listView.getItems().add(new Message("Server", name, "你对" + user.get() + "发起了私聊"));
                     chatList.getItems().add(new Chat(name, user.get(), null, listView, ChatType.PRIVATE));
                 }
                 chatList.getSelectionModel().select(chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).indexOf(user.get()));
@@ -211,36 +223,54 @@ public class ChatController implements Initializable {
                     groupName.append("... (").append(user.size()).append(")");
                 }
                 
-                StringBuilder groupMember = new StringBuilder();
-                user.forEach(u -> groupMember.append(u).append(", "));
-                groupMember.delete(groupMember.length() - 2, groupMember.length());
-                
-                oos.writeInt(3);
-                oos.writeUTF(groupName.toString());
-                oos.writeUTF(groupMember.toString());
-                oos.writeObject(user);
-                oos.flush();
-                
-                user.remove(name);
-                ListView<Message> listView = new ListView<>();
-                listView.getItems().add(new Message(10L, "Server", name, "你发起了群聊，参加群聊的人有：" + groupMember));
-                chatList.getItems().add(new Chat(name, groupName.toString(), user, listView, ChatType.GROUP));
-                chatList.getSelectionModel().select(chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).indexOf(groupName.toString()));
+                if (!this.chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).contains(groupName.toString())) {
+                    StringBuilder groupMember = new StringBuilder();
+                    user.forEach(u -> groupMember.append(u).append(", "));
+                    groupMember.delete(groupMember.length() - 2, groupMember.length());
+                    
+                    oos.writeInt(3);
+                    oos.writeUTF(groupName.toString());
+                    oos.writeUTF(groupMember.toString());
+                    oos.writeObject(user);
+                    oos.flush();
+                    
+                    user.remove(name);
+                    ListView<Message> listView = new ListView<>();
+                    listView.getItems().add(new Message("Server", name, "你发起了群聊，参加群聊的人有：" + groupMember));
+                    chatList.getItems().add(new Chat(name, groupName.toString(), user, listView, ChatType.GROUP));
+                    chatList.getSelectionModel().select(chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).indexOf(groupName.toString()));
+                }
             }
         } catch (IOException e) {
             serverOffline();
         }
     }
     
-    /**
-     * Sends the message to the <b>currently selected</b> chat.
-     * <p>
-     * Blank messages are not allowed.
-     * After sending the message, you should clear the text input field.
-     */
     @FXML
     public void doSendMessage() {
-        // TODO
+        try {
+            String data = inputArea.getText();
+            if (data == null || data.isEmpty()) return;
+            Chat chat = chatList.getSelectionModel().getSelectedItem();
+            Message message = null;
+            
+            if (chat.chatType == ChatType.PRIVATE) {
+                message = new Message(name, chat.youName, data);
+                oos.writeInt(4);
+                oos.writeObject(message);
+                oos.flush();
+            } else if (chat.chatType == ChatType.GROUP) {
+                message = new Message(name, chat.youName, chat.groupMembers, data);
+                oos.writeInt(5);
+                oos.writeObject(message);
+                oos.flush();
+            }
+    
+            chatContentList.getItems().add(message);
+            inputArea.clear();
+        } catch (IOException e) {
+            serverOffline();
+        }
     }
     
     private class MessageCellFactory implements Callback<ListView<Message>, ListCell<Message>> {
@@ -251,6 +281,8 @@ public class ChatController implements Initializable {
                 public void updateItem(Message msg, boolean empty) {
                     super.updateItem(msg, empty);
                     if (empty || Objects.isNull(msg)) {
+                        setText(null);
+                        setGraphic(null);
                         return;
                     }
                     
@@ -262,7 +294,7 @@ public class ChatController implements Initializable {
                     nameLabel.setWrapText(true);
                     nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
                     
-                    if (currentUsername.getText().equals(msg.getSentBy())) {
+                    if (name.equals(msg.getSentBy())) {
                         wrapper.setAlignment(Pos.TOP_RIGHT);
                         wrapper.getChildren().addAll(msgLabel, nameLabel);
                         msgLabel.setPadding(new Insets(0, 20, 0, 0));
