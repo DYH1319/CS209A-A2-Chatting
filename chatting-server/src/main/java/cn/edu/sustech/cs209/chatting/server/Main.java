@@ -5,13 +5,12 @@ import cn.edu.sustech.cs209.chatting.common.Message;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URLDecoder;
 import java.sql.*;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Date;
+import java.util.stream.Collectors;
 
 public class Main {
     
@@ -31,8 +30,16 @@ public class Main {
         }
         
         try {
-            String url = "jdbc:sqlite:chatting-server/src/main/resources/cn.edu.sustech.cs209.chatting.server/data.db";
-            con = DriverManager.getConnection(url);
+            try {
+                con = DriverManager.getConnection("jdbc:sqlite:file:chatting-server\\src\\main\\resources\\data_server.db?mode=rw");
+            } catch (SQLException e) {
+                String path = Main.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+                try {
+                    path = URLDecoder.decode(path, "UTF-8");
+                } catch (UnsupportedEncodingException ignore) {}
+                File jarFile = new File(path);
+                con = DriverManager.getConnection("jdbc:sqlite:file:" + jarFile.getParentFile().getPath() + File.separator + "data_server.db?mode=rw");
+            }
         } catch (SQLException e) {
             System.err.println("Database connection failed");
             System.err.println(e.getMessage());
@@ -97,6 +104,7 @@ public class Main {
                             ps.execute();
                             oos.writeBoolean(true);
                             oos.flush();
+                            System.out.println(socket.getInetAddress() + ":" + socket.getPort() + " 用户" + name + "成功注册");
                             break;
                         }
                         // 1: sign in
@@ -170,26 +178,64 @@ public class Main {
                             Message message = (Message) ois.readObject();
                             ObjectOutputStream dest = ooss.get(message.getSendTo());
                             try {
+                                // if dest is offline, dest is null
                                 dest.writeInt(3);
                                 dest.writeObject(message);
+                                dest.flush();
                             } catch (IOException ex) {
                                 userOffline(message.getSendTo());
+                            } catch (NullPointerException handle) {
+                                // Server save the private message
+                                System.out.println("服务器存储了一条私聊离线消息");
+                                sql = "insert into message values (?, ?, ?, ?, ?, ?, ?)";
+                                ps = con.prepareStatement(sql);
+                                ps.setString(1, message.getSendTo());
+                                ps.setString(2, message.getSentBy());
+                                ps.setString(3, message.getSendTo());
+                                ps.setString(4, null);
+                                ps.setString(5, message.getData());
+                                ps.setBoolean(6, true);
+                                ps.setString(7, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(message.getTimestamp()));
+                                ps.executeUpdate();
                             }
                             break;
                         }
                         // 5: group message
                         case 5: {
                             Message message = (Message) ois.readObject();
-                            message.getSendTos().forEach(e -> {
+                            message.getSendTos().stream().filter(e -> !e.equals(name)).forEach(e -> {
                                 ObjectOutputStream dest = ooss.get(e);
                                 try {
                                     dest.writeInt(4);
                                     dest.writeObject(message);
+                                    dest.flush();
                                 } catch (IOException ex) {
                                     userOffline(e);
+                                } catch (NullPointerException handle) {
+                                    try {
+                                        // Server save the group message
+                                        System.out.println("服务器存储了一条群聊离线消息");
+                                        sql = "insert into message values (?, ?, ?, ?, ?, ?, ?)";
+                                        ps = con.prepareStatement(sql);
+                                        ps.setString(1, e);
+                                        ps.setString(2, message.getSentBy());
+                                        ps.setString(3, message.getSendTo());
+                                        String temp = message.getSendTos().toString();
+                                        ps.setString(4, temp.substring(0, temp.length() - 1).substring(1));
+                                        ps.setString(5, message.getData());
+                                        ps.setBoolean(6, false);
+                                        ps.setString(7, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(message.getTimestamp()));
+                                        ps.executeUpdate();
+                                    } catch (SQLException ex) {
+                                        ex.printStackTrace();
+                                    }
                                 }
                             });
                             break;
+                        }
+                        // 6: Client has already to receiver
+                        case 6: {
+                            sendOfflineMessage(name);
                         }
                     }
                 }
@@ -198,6 +244,32 @@ public class Main {
             } catch (SQLException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
+        }
+        
+        private void sendOfflineMessage(String currentClient) throws SQLException, IOException {
+            sql = "select * from message where current_client = ?";
+            ps = con.prepareStatement(sql);
+            ps.setString(1, currentClient);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                ObjectOutputStream dest = ooss.get(currentClient);
+                if (rs.getBoolean(6)) {
+                    Message message = new Message(rs.getString(2), rs.getString(3), rs.getString(5), rs.getString(7));
+                    dest.writeInt(3);
+                    dest.writeObject(message);
+                    dest.flush();
+                } else {
+                    Message message = new Message(rs.getString(2), rs.getString(3), Arrays.stream(rs.getString(4).split(", ")).collect(Collectors.toList()), rs.getString(5), rs.getString(7));
+                    dest.writeInt(4);
+                    dest.writeObject(message);
+                    dest.flush();
+                }
+            }
+            
+            sql = "delete from message where current_client = ?";
+            ps = con.prepareStatement(sql);
+            ps.setString(1, currentClient);
+            ps.executeUpdate();
         }
         
         private void userOffline(String name) {

@@ -1,6 +1,8 @@
 package cn.edu.sustech.cs209.chatting.common;
 
 import java.io.Serializable;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -26,6 +28,29 @@ public class Message implements Serializable {
         this.sendTo = sendTo;
         this.sendTos = sendTos;
         this.data = data;
+    }
+    
+    public Message(String sentBy, String sendTo, String data, String timestamp) {
+        try {
+            this.timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(timestamp);
+            this.sentBy = sentBy;
+            this.sendTo = sendTo;
+            this.data = data;
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public Message(String sentBy, String sendTo, List<String> sendTos, String data, String timestamp) {
+        try {
+            this.timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(timestamp);
+            this.sentBy = sentBy;
+            this.sendTo = sendTo;
+            this.sendTos = sendTos;
+            this.data = data;
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     public Date getTimestamp() {

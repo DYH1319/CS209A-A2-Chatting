@@ -37,7 +37,13 @@ public class LoginController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
-            socket = new Socket("127.0.0.1", 8520);
+            try {
+                socket = new Socket("127.0.0.1", 8520);
+                System.out.println("成功连接本地服务器");
+            } catch (IOException e) {
+                socket = new Socket("43.139.17.93", 8520);
+                System.out.println("成功连接远程服务器");
+            }
             oos = new ObjectOutputStream(socket.getOutputStream());
             oos.writeObject("");
             ois = new ObjectInputStream(socket.getInputStream());
@@ -126,6 +132,7 @@ public class LoginController implements Initializable {
                     stage.hide();
                     stage.setScene(chatScene);
                     stage.show();
+                    System.out.println("当前登录用户:" + name);
                 } catch (IOException | ClassNotFoundException | ClassCastException e) {
                     e.printStackTrace();
                 }
