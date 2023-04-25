@@ -16,10 +16,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
@@ -318,14 +315,14 @@ public class ChatController implements Initializable {
                             String fileType = ois.readUTF();
                             
                             CountDownLatch latch = new CountDownLatch(1);
-    
+                            
                             Platform.runLater(() -> {
                                 FileChooser fileChooser = new FileChooser();
                                 fileChooser.setTitle("Save File");
                                 fileChooser.setInitialFileName(fileName);
                                 fileChooser.setSelectedExtensionFilter(new FileChooser.ExtensionFilter(fileType + "文件", ".*" + fileType));
                                 File fileToSave = fileChooser.showSaveDialog(sendBtn.getScene().getWindow());
-    
+                                
                                 if (fileToSave != null) {
                                     try {
                                         FileTransport file = null;
@@ -374,7 +371,7 @@ public class ChatController implements Initializable {
                                     }
                                 }
                             });
-    
+                            
                             try {
                                 latch.await();
                             } catch (InterruptedException e) {
@@ -413,13 +410,13 @@ public class ChatController implements Initializable {
                     userSel.getItems().add(name);
                     int index;
                     if ((index = chats.stream().map(c -> c.youName).collect(Collectors.toList()).indexOf(name)) != -1) {
-                        chats.get(index).setOnline(true);
+                        chatList.getItems().get(index).setOnline(true);
                     }
                 } else {
                     userSel.getItems().remove(name);
                     int index;
                     if ((index = chats.stream().map(c -> c.youName).collect(Collectors.toList()).indexOf(name)) != -1) {
-                        chats.get(index).setOnline(false);
+                        chatList.getItems().get(index).setOnline(false);
                     }
                 }
             }
@@ -511,7 +508,7 @@ public class ChatController implements Initializable {
     
     private void updateChatList(String youName, int unread, Date lastChatTime, boolean isReset) {
         Platform.runLater(() -> {
-            Chat chat = chats.stream().filter(c -> c.youName.equals(youName)).collect(Collectors.toList()).get(0);
+            Chat chat = chatList.getItems().stream().filter(c -> c.youName.equals(youName)).collect(Collectors.toList()).get(0);
             if (isReset) {
                 chat.setUnread(unread);
             } else {
@@ -545,7 +542,7 @@ public class ChatController implements Initializable {
             stage.showAndWait();
             
             if (user.get() != null && !user.get().isEmpty()) {
-                if (!this.chats.stream().map(o -> o.youName).collect(Collectors.toList()).contains(user.get())) {
+                if (!this.chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).contains(user.get())) {
                     oos.writeInt(2);
                     oos.writeUTF(user.get());
                     oos.flush();
@@ -557,7 +554,7 @@ public class ChatController implements Initializable {
                     listView.getItems().add(message);
                     chats.add(new Chat(name, user.get(), null, listView, ChatType.PRIVATE, 0, message.getTimestamp()));
                 }
-                chatList.getSelectionModel().select(chats.stream().map(o -> o.youName).collect(Collectors.toList()).indexOf(user.get()));
+                chatList.getSelectionModel().select(chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).indexOf(user.get()));
             }
         } catch (IOException e) {
             serverOffline();
@@ -604,7 +601,7 @@ public class ChatController implements Initializable {
                     groupName.append("... (").append(user.size()).append(")");
                 }
                 
-                if (!this.chats.stream().map(o -> o.youName).collect(Collectors.toList()).contains(groupName.toString())) {
+                if (!this.chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).contains(groupName.toString())) {
                     StringBuilder groupMember = new StringBuilder();
                     user.forEach(u -> groupMember.append(u).append(", "));
                     groupMember.delete(groupMember.length() - 2, groupMember.length());
@@ -624,7 +621,7 @@ public class ChatController implements Initializable {
                     listView.getItems().add(message);
                     chats.add(new Chat(name, groupName.toString(), user, listView, ChatType.GROUP, 1, message.getTimestamp()));
                 }
-                chatList.getSelectionModel().select(chats.stream().map(o -> o.youName).collect(Collectors.toList()).indexOf(groupName.toString()));
+                chatList.getSelectionModel().select(chatList.getItems().stream().map(o -> o.youName).collect(Collectors.toList()).indexOf(groupName.toString()));
             }
         } catch (IOException e) {
             serverOffline();
@@ -706,6 +703,14 @@ public class ChatController implements Initializable {
                 });
             }
         }
+    }
+    
+    @FXML
+    public void doSendEmoji() {
+        String[] emojis = {"😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "😇", "😍", "😘", "😗", "😙", "😚", "😋", "😛", "😜", "😝", "😞", "😟", "😠", "😡", "😢", "😣"};
+        Random random = new Random();
+        String emoji = emojis[random.nextInt(emojis.length)];
+        Platform.runLater(() -> inputArea.appendText(emoji));
     }
     
     private String formatFileSize(long fileSize) {
