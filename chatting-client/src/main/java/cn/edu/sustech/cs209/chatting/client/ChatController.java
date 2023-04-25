@@ -21,7 +21,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
 import java.io.*;
 import java.net.Socket;
 import java.net.URL;
