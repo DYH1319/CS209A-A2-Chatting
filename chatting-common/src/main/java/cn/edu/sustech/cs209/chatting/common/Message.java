@@ -9,6 +9,7 @@ import java.util.List;
 public class Message implements Serializable {
     
     private static final long serialVersionUID = 1L;
+    private int fileId;
     private Date timestamp;
     private String sentBy;
     private String sendTo;
@@ -20,6 +21,7 @@ public class Message implements Serializable {
         this.sentBy = sentBy;
         this.sendTo = sendTo;
         this.data = data;
+        this.fileId = -1;
     }
     
     public Message(String sentBy, String sendTo, List<String> sendTos, String data) {
@@ -28,6 +30,7 @@ public class Message implements Serializable {
         this.sendTo = sendTo;
         this.sendTos = sendTos;
         this.data = data;
+        this.fileId = -1;
     }
     
     public Message(String sentBy, String sendTo, String data, String timestamp) {
@@ -36,6 +39,7 @@ public class Message implements Serializable {
             this.sentBy = sentBy;
             this.sendTo = sendTo;
             this.data = data;
+            this.fileId = -1;
         } catch (ParseException e) {
             e.printStackTrace();
         }
@@ -48,11 +52,20 @@ public class Message implements Serializable {
             this.sendTo = sendTo;
             this.sendTos = sendTos;
             this.data = data;
+            this.fileId = -1;
         } catch (ParseException e) {
             e.printStackTrace();
         }
     }
-
+    
+    public void setFileId(int fileId) {
+        this.fileId = fileId;
+    }
+    
+    public int getFileId() {
+        return fileId;
+    }
+    
     public Date getTimestamp() {
         return timestamp;
     }
