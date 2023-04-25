@@ -657,12 +657,32 @@ public class ChatController implements Initializable {
     @FXML
     public void doSendFile() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select a File");
+        fileChooser.setTitle("Select a File(File size should less than 50MB)");
         File selectedFile = fileChooser.showOpenDialog(sendBtn.getScene().getWindow());
         if (selectedFile != null) {
             try {
                 Chat chat = chatList.getSelectionModel().getSelectedItem();
-                if (chat == null) return;
+                if (chat == null) {
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.WARNING);
+                        alert.setTitle("无法发送文件");
+                        alert.setHeaderText("请先选择聊天对象再发送文件");
+                        alert.setContentText(null);
+                        alert.showAndWait();
+                    });
+                    return;
+                }
+    
+                if (selectedFile.length() >= 52428800) {
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.WARNING);
+                        alert.setTitle("文件过大");
+                        alert.setHeaderText("请选择大小小于50MB的文件");
+                        alert.setContentText(null);
+                        alert.showAndWait();
+                    });
+                    return;
+                }
                 
                 byte[] fileBytes = Files.readAllBytes(selectedFile.toPath());
                 String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
@@ -706,7 +726,8 @@ public class ChatController implements Initializable {
     
     @FXML
     public void doSendEmoji() {
-        String[] emojis = {"😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "😇", "😍", "😘", "😗", "😙", "😚", "😋", "😛", "😜", "😝", "😞", "😟", "😠", "😡", "😢", "😣"};
+        String[] emojis = {"😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "😇", "😍", "😘", "😗", "😙",
+                "😚", "😋", "😛", "😜", "😝", "😞", "😟", "😠", "😡", "😢", "😣"};
         Random random = new Random();
         String emoji = emojis[random.nextInt(emojis.length)];
         Platform.runLater(() -> inputArea.appendText(emoji));
@@ -791,7 +812,6 @@ public class ChatController implements Initializable {
                 setText(null);
             } else {
                 unreadCountLabel.textProperty().bind(Bindings.format("%d", chat.unreadProperty()));
-//                lastMessageTimeLabel.textProperty().bind(Bindings.format("%s", formatTime(LocalDateTime.parse(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(chat.lastChatTimeProperty().get()), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")))));
                 lastMessageTimeLabel.textProperty().bind(Bindings.createStringBinding(() -> formatTime(LocalDateTime.parse(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(chat.getLastChatTime()), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))), chat.lastChatTimeProperty()));
                 if (chat.chatType == ChatType.PRIVATE)
                     onlineState.fillProperty().bind(Bindings.when(chat.online).then(Color.GREEN).otherwise(Color.GRAY));
